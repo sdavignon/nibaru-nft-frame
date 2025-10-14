@@ -1,0 +1,21 @@
+{
+  "name": "Mothership Nibaru \u2013 Passage #1",
+  "description": "A boarding pass to the Mothership Nibaru. Minted via Warpcast Frame.",
+  "image": "ipfs://YOUR_CID/ticket_1200.png",
+  "animation_url": "ipfs://YOUR_CID/ticket_holo.mp4",
+  "external_url": "https://your-app.example/frame",
+  "attributes": [
+    {
+      "trait_type": "Class",
+      "value": "Starlight"
+    },
+    {
+      "trait_type": "Seat",
+      "value": "Pod B12-07"
+    },
+    {
+      "trait_type": "Chain",
+      "value": "Base"
+    }
+  ]
+}
