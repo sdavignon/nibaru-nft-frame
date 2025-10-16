@@ -1,0 +1,50 @@
+name: Deploy to Base Sepolia (and record address)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_uri:
+        description: 'Base token URI (ipfs://...)'
+        required: false
+      royalty_bps:
+        description: 'Royalty bps'
+        required: false
+      max_supply:
+        description: 'Max supply'
+        required: false
+      merkle_root:
+        description: 'Merkle root (for allowlist builds)'
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+      PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+
+      GITHUB_OWNER: ${{ github.repository_owner }}
+      GITHUB_REPO: ${{ github.event.repository.name }}
+      GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}  # Fine-grained PAT with "Actions: Read/Write"
+
+      NAME: "Mothership Nibaru Ticket"
+      SYMBOL: "NIBARU"
+      BASE_URI: ${{ inputs.base_uri || vars.BASE_URI || 'ipfs://YOUR_METADATA_CID/' }}
+      ROYALTY_BPS: ${{ inputs.royalty_bps || vars.ROYALTY_BPS || 500 }}
+      MAX_SUPPLY: ${{ inputs.max_supply || vars.MAX_SUPPLY || 777 }}
+      MERKLE_ROOT: ${{ inputs.merkle_root || vars.MERKLE_ROOT || '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install pnpm
+        run: npm i -g pnpm
+      - name: Install deps
+        run: pnpm i
+      - name: Compile
+        run: npx hardhat compile
+      - name: Deploy and record address
+        run: node scripts/deploy-and-record.js

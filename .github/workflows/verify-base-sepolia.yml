@@ -1,0 +1,83 @@
+name: Verify on Base Sepolia
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'contracts/**'
+      - 'scripts/deploy.js'
+      - 'hardhat.config.js'
+      - '.github/workflows/verify-base-sepolia.yml'
+  workflow_dispatch:
+    inputs:
+      contract_address:
+        description: 'Deployed contract address to verify (overrides repo var)'
+        required: false
+      base_uri:
+        description: 'Base token URI (ipfs://...) (overrides repo var)'
+        required: false
+      max_supply:
+        description: 'Max supply (overrides repo var)'
+        required: false
+      royalty_bps:
+        description: 'Royalty bps (overrides repo var)'
+        required: false
+      merkle_root:
+        description: 'Merkle root (only for allowlist contract)'
+        required: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets (set in: Settings → Secrets and variables → Actions → New repository secret)
+      ETHERSCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+      RPC_URL: ${{ secrets.BASE_SEPOLIA_RPC_URL }}
+      PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+
+      # Variables (set in: Settings → Secrets and variables → Actions → New repository variable)
+      NAME: "Mothership Nibaru Ticket"
+      SYMBOL: "NIBARU"
+      BASE_URI: ${{ inputs.base_uri || vars.BASE_URI || 'ipfs://YOUR_METADATA_CID/' }}
+      ROYALTY_BPS: ${{ inputs.royalty_bps || vars.ROYALTY_BPS || 500 }}
+      MAX_SUPPLY: ${{ inputs.max_supply || vars.MAX_SUPPLY || 777 }}
+      MERKLE_ROOT: ${{ inputs.merkle_root || vars.MERKLE_ROOT || '' }}
+      CONTRACT_ADDRESS: ${{ inputs.contract_address || vars.CONTRACT_ADDRESS }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm i -g pnpm
+
+      - name: Install deps
+        run: pnpm i
+
+      - name: Compile
+        run: npx hardhat compile
+
+      - name: Show config
+        run: |
+          echo "Contract: ${CONTRACT_ADDRESS}"
+          echo "Base URI: ${BASE_URI}"
+          echo "Max: ${MAX_SUPPLY}, Royalty: ${ROYALTY_BPS}, Root: ${MERKLE_ROOT}"
+
+      - name: Verify (auto-detect allowlist)
+        shell: bash
+        run: |
+          if [ -z "${CONTRACT_ADDRESS}" ]; then
+            echo "Missing CONTRACT_ADDRESS (set repo var or provide via workflow input)"
+            exit 1
+          fi
+          if [ -n "${MERKLE_ROOT}" ]; then
+            echo "Verifying allowlist constructor signature..."
+            npx hardhat verify --network baseSepolia "${CONTRACT_ADDRESS}" "${NAME}" "${SYMBOL}" "${BASE_URI}" "${ROYALTY_BPS}" "${MAX_SUPPLY}" "${MERKLE_ROOT}"
+          else
+            echo "Verifying standard constructor signature..."
+            npx hardhat verify --network baseSepolia "${CONTRACT_ADDRESS}" "${NAME}" "${SYMBOL}" "${BASE_URI}" "${ROYALTY_BPS}" "${MAX_SUPPLY}"
+          fi
